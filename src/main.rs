@@ -5,6 +5,7 @@ mod password;
 mod session;
 #[cfg(test)]
 mod test_support;
+mod update;
 
 use anyhow::{Context, Result, bail};
 use clap::{Args, ColorChoice, Parser, Subcommand, ValueEnum};
@@ -43,6 +44,14 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Show the installed version and build target without opening a support session.
+    Version,
+    /// Install the latest stable GitHub release after verifying its SHA-256 checksums.
+    SelfUpdate {
+        /// Check for a newer release without downloading or replacing the executable.
+        #[arg(long)]
+        check: bool,
+    },
     /// Sign in with your support email and password (no OAuth client required).
     Login {
         #[arg(long, env = "ZD_SUPPORT_EMAIL")]
@@ -203,6 +212,24 @@ fn main() {
 }
 
 fn run(cli: Cli) -> Result<()> {
+    match cli.command {
+        Command::Version => {
+            let version = env!("CARGO_PKG_VERSION");
+            let target = env!("ZD_SUPPORT_TARGET");
+            if cli.json {
+                writeln!(
+                    io::stdout(),
+                    "{}",
+                    json!({"name":"zd-support", "version":version, "target":target})
+                )?;
+            } else {
+                writeln!(io::stdout(), "zd-support {version} ({target})")?;
+            }
+            return Ok(());
+        }
+        Command::SelfUpdate { check } => return update::run(check, cli.json),
+        _ => {}
+    }
     let portal = portal_url(&cli.portal)?;
     run_with_portal(cli, portal)
 }
