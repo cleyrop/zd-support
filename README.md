@@ -14,12 +14,12 @@ Windows n’est pas distribué ni validé pour cette première release.
 Exemple pour macOS Apple Silicon, avec GitHub CLI installé :
 
 ```sh
-gh release download v0.3.6 --repo cleyrop/zd-support \
-  --pattern 'zd-support-v0.3.6-aarch64-apple-darwin.zip' --pattern SHA256SUMS
-gh attestation verify zd-support-v0.3.6-aarch64-apple-darwin.zip --repo cleyrop/zd-support
-unzip zd-support-v0.3.6-aarch64-apple-darwin.zip
+gh release download v0.4.0 --repo cleyrop/zd-support \
+  --pattern 'zd-support-v0.4.0-aarch64-apple-darwin.zip' --pattern SHA256SUMS
+gh attestation verify zd-support-v0.4.0-aarch64-apple-darwin.zip --repo cleyrop/zd-support
+unzip zd-support-v0.4.0-aarch64-apple-darwin.zip
 mkdir -p "$HOME/.local/bin"
-install -m 755 zd-support-v0.3.6-aarch64-apple-darwin/zd-support "$HOME/.local/bin/zd-support"
+install -m 755 zd-support-v0.4.0-aarch64-apple-darwin/zd-support "$HOME/.local/bin/zd-support"
 ```
 
 Ajouter `~/.local/bin` au `PATH` si nécessaire. Pour Intel, remplacer `aarch64`
@@ -42,6 +42,87 @@ incompatible avec le linker installé. Le build est validé avec :
 SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk \
   cargo install --locked --path .
 ```
+
+## Version et mise à jour
+
+```sh
+zd-support version
+zd-support version --json
+zd-support self-update --check
+zd-support self-update
+zd-support self-update --check --json
+```
+
+`version` fonctionne hors ligne, sans ouvrir la session support. `--version` reste disponible.
+`self-update` choisit la dernière release stable et immuable du dépôt officiel,
+pour la plateforme du binaire exécuté. Il ne rétrograde jamais et n’installe pas de préversion.
+La vérification seule (`--check`) ne télécharge aucune archive et ne remplace aucun fichier.
+
+La mise à jour est autonome : aucun `gh`, `curl`, `tar` ou `unzip` n’est requis.
+Elle vérifie les empreintes SHA-256 des métadonnées GitHub et du fichier `SHA256SUMS`,
+puis celle de l’archive téléchargée. Tous les téléchargements passent par HTTPS,
+avec redirections limitées aux hôtes de releases GitHub. Sur macOS, la signature
+Apple doit aussi correspondre au Developer ID Cleyrop. Les attestations Sigstore
+restent disponibles pour une vérification manuelle avec `gh attestation verify` ;
+`self-update` ne les vérifie pas et fait confiance aux métadonnées GitHub via HTTPS.
+
+Seul l’exécutable attendu est extrait ; les chemins de l’archive ne sont jamais
+utilisés comme destinations. Sa version et son exécution sont vérifiées avant un
+remplacement atomique. En cas d’échec avant ce remplacement, l’ancien binaire
+reste intact. Les sessions Zendesk ne sont ni lues ni modifiées. L’installation
+doit être accessible en écriture ; aucun `sudo` n’est lancé automatiquement.
+Pour Homebrew, Nix ou Snap, utiliser le gestionnaire de paquets.
+Les appels GitHub sont anonymes et soumis à sa limite de requêtes.
+
+La version 0.3.6 ne possède pas `self-update` : installer 0.4.0 une première fois
+avec les instructions ci-dessus, puis utiliser cette commande pour les versions suivantes.
+
+## Mesures de taille
+
+Mesures locales du 2 novembre 2026, même cible `aarch64-apple-darwin`, Rust 1.90.0
+et SDK macOS 26.5. Exécutables locaux avant signature Developer ID : les tailles
+peuvent différer des archives publiées et des autres plateformes. Mo = 1 000 000 octets.
+
+| Variante | Exécutable | Gain sur 0.3.6 |
+| --- | ---: | ---: |
+| 0.3.6, réglages initiaux | 4,421 Mo | — |
+| `opt-level=s`, LTO complet, 1 unité de génération | 2,744 Mo | 37,93 % |
+| `opt-level=z`, LTO complet, 1 unité de génération | 2,337 Mo | 47,15 % |
+| Même profil, module terminal redondant retiré | 2,320 Mo | 47,52 % |
+| Prototype HTTP `ureq`, profil z | 2,053 Mo | 53,57 % |
+| **0.4.0 retenue, avec version et self-update** | **2,470 Mo** | **44,13 %** |
+
+Le prototype `ureq` passe les 21 tests existants mais n’est pas retenu : sa sélection
+des proxies d’environnement et ses règles `NO_PROXY` diffèrent de reqwest, notamment
+pour les sous-réseaux CIDR. Conserver reqwest préserve ce comportement et le transport
+HTTPS existant. Aucun changement de TLS, d’Unicode, de commandes ou de gestion des
+paniques n’est utilisé pour gagner de la place.
+
+La configuration de `comfy-table` retire 7 paquets de compilation ciblés
+(Crossterm et ses dépendances devenues inutiles). La CLI réglait déjà explicitement
+la largeur avec `terminal_size`, et conserve ses couleurs et ses cadres.
+Le graphe ciblé passe de 151 à 144 paquets avant les nouvelles commandes ; avec
+les dépendances de décompression et de comparaison de versions de `self-update`,
+il atteint **156** sur macOS ARM64. Le nombre total augmente donc de 5 malgré
+la réduction du binaire. Les décompresseurs ne sont activés que pour les formats nécessaires.
+
+Les mesures brutes et le patch du prototype sont dans `benchmarks/` du dépôt.
+Reproduire les profils sur le tag `v0.3.6` en faisant varier
+`CARGO_PROFILE_RELEASE_OPT_LEVEL=s` ou `z`, avec
+`CARGO_PROFILE_RELEASE_LTO=fat CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 cargo build --release --locked`.
+Le commit `a68f638` contient le profil retenu et la suppression du module terminal.
+Le prototype s’applique à `v0.3.6` avec `benchmarks/ureq-prototype.patch`, puis
+`cargo build --release` avec les mêmes variables du profil z.
+Mesurer les exécutables conservés avec :
+
+```sh
+python3 scripts/measure_size.py baseline=/chemin/ancien candidat=/chemin/nouveau
+```
+
+Le JSON donne les octets, SHA-256 et la taille gzip déterministe du binaire seul
+(2 035 202 → 1 415 473 octets entre la référence et 0.4.0, soit −30,45 %).
+Le comptage des paquets inclut dépendances normales et de compilation, hors tests,
+après filtrage de plateforme par `cargo metadata --filter-platform aarch64-apple-darwin`.
 
 ## Connexion avec ton compte support
 

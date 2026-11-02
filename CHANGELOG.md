@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 2026-11-02
+
+- Ajout de `version` et de `self-update`, avec `--check` et sortie JSON.
+- Mise à jour autonome : SHA-256 via HTTPS, contrôle Developer ID sur macOS, remplacement atomique.
+- Réduction mesurée de 44,13 % du binaire macOS ARM64, nouvelles commandes incluses.
+- Suppression du module terminal redondant et conservation du comportement réseau existant.
+
 ## 0.3.6 — 2026-11-02
 
 Première version publique ; les versions précédentes correspondaient au développement local.

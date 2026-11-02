@@ -1,0 +1,44 @@
+[
+  {
+    "label": "baseline",
+    "bytes": 4421152,
+    "gzip_bytes": 2035202,
+    "sha256": "8d59e3989700bc6af5d414cbe8746e71ea95fcd415b7017394ddd22ea9cfe670",
+    "reduction_percent": 0.0
+  },
+  {
+    "label": "profile-s",
+    "bytes": 2744144,
+    "gzip_bytes": 1421388,
+    "sha256": "3edf6b2ae9e82b4b5723a864fb4e47feed27935ac96ba58e26e3573854c9e93b",
+    "reduction_percent": 37.93
+  },
+  {
+    "label": "profile-z",
+    "bytes": 2336688,
+    "gzip_bytes": 1323677,
+    "sha256": "5d36d7e11a868d283e0a0b8ca6e2b0f78c28f36edec06aa1d7743ac1387172ac",
+    "reduction_percent": 47.15
+  },
+  {
+    "label": "profile-z-no-tty",
+    "bytes": 2320000,
+    "gzip_bytes": 1316015,
+    "sha256": "b594eb472959c83efd1b2dec55dc0914a63835635985dcfae66f6d53681f16da",
+    "reduction_percent": 47.52
+  },
+  {
+    "label": "ureq-prototype",
+    "bytes": 2052800,
+    "gzip_bytes": 1166514,
+    "sha256": "088812fd8ec9b422802edc8e8c80f34908389ec341e82782c39f2e0bbe8bad29",
+    "reduction_percent": 53.57
+  },
+  {
+    "label": "final-with-updater",
+    "bytes": 2470016,
+    "gzip_bytes": 1415473,
+    "sha256": "ed9a4562b351cf8ad5bce6a08ff99df479bd42b51abe3f7a5ede07872fcef1b1",
+    "reduction_percent": 44.13
+  }
+]

@@ -1,0 +1,142 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 15ed877..7878453 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -22,7 +22,7 @@ terminal_size = "0.4"
+ unicode-width = "0.2"
+ directories = "6"
+ fs2 = "0.4"
+-reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
++ureq = { version = "3.5", default-features = false, features = ["rustls", "json"] }
+ rpassword = "7"
+ serde = { version = "1", features = ["derive"] }
+ serde_json = "1"
+diff --git a/src/api.rs b/src/api.rs
+index 47fd535..b62e875 100644
+--- a/src/api.rs
++++ b/src/api.rs
+@@ -3,7 +3,8 @@ use crate::{
+     session::{Session, Storage},
+ };
+ use anyhow::{Context, Result, bail};
+-use reqwest::{Method, blocking::Client};
++use ureq::Agent as Client;
++use base64::{Engine, engine::general_purpose::STANDARD};
+ use serde_json::{Value, json};
+ use std::{cell::RefCell, collections::HashSet};
+ use url::Url;
+@@ -130,20 +131,17 @@ impl<'a> Api<'a> {
+             String::new()
+         };
+         let mut attempts = 0;
+-        let response = loop {
+-            let mut request = self
+-                .client
+-                .request(Method::from_bytes(method.as_bytes())?, url.clone())
+-                .header("Accept", "application/json");
+-            request = if let Some(credentials) = &basic {
+-                request.basic_auth(&credentials.email, Some(&credentials.password))
+-            } else {
+-                request.bearer_auth(&token)
+-            };
+-            if let Some(body) = &body {
+-                request = request.json(body);
+-            }
+-            let response = request.send().with_context(|| if method == "GET" {
++        let mut response = loop {
++            let auth = if let Some(credentials) = &basic {
++                format!("Basic {}", STANDARD.encode(format!("{}:{}", credentials.email, credentials.password)))
++            } else { format!("Bearer {token}") };
++            let mut request = ureq::http::Request::builder().method(method).uri(url.as_str())
++                .header("Accept", "application/json").header("Authorization", auth);
++            let payload = if let Some(body) = &body {
++                request = request.header("Content-Type", "application/json");
++                serde_json::to_vec(body)?
++            } else { Vec::new() };
++            let response = self.client.run(request.body(payload)?).with_context(|| if method == "GET" {
+                 "API request failed"
+             } else {
+                 "Network failure: delivery is unknown. Check the ticket before retrying; no automatic retry was made"
+@@ -196,7 +194,7 @@ impl<'a> Api<'a> {
+         } else {
+             ""
+         };
+-        let value: Value = response.json().with_context(|| format!("HTTP {status}: expected a JSON API response (possible login page or proxy challenge){uncertain}"))?;
++        let value: Value = serde_json::from_reader(response.body_mut().as_reader()).with_context(|| format!("HTTP {status}: expected a JSON API response (possible login page or proxy challenge){uncertain}"))?;
+         if !status.is_success() {
+             let detail = serde_json::to_string(&value)?;
+             let detail: String = detail.chars().take(1500).collect();
+diff --git a/src/oauth.rs b/src/oauth.rs
+index dcd793e..e75f0b6 100644
+--- a/src/oauth.rs
++++ b/src/oauth.rs
+@@ -1,7 +1,7 @@
+ use crate::session::Session;
+ use anyhow::{Context, Result, bail};
+ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+-use reqwest::{blocking::Client, redirect::Policy};
++use ureq::Agent as Client;
+ use serde_json::{Value, json};
+ use sha2::{Digest, Sha256};
+ use std::{
+@@ -14,13 +14,12 @@ use std::{
+ use url::Url;
+ 
+ pub fn client() -> Result<Client> {
+-    Ok(Client::builder()
++    Ok(Client::config_builder()
+         .user_agent(concat!("zd-support/", env!("CARGO_PKG_VERSION")))
+-        .redirect(Policy::none())
+-        .retry(reqwest::retry::never())
+-        .connect_timeout(Duration::from_secs(10))
+-        .timeout(Duration::from_secs(45))
+-        .build()?)
++        .http_status_as_error(false).max_redirects(0)
++        .timeout_connect(Some(Duration::from_secs(10)))
++        .timeout_global(Some(Duration::from_secs(45)))
++        .build().into())
+ }
+ 
+ pub fn now() -> u64 {
+@@ -281,10 +280,9 @@ fn respond(stream: &mut TcpStream, status: u16, body: &str) {
+ }
+ 
+ fn token_request(client: &Client, origin: &Url, payload: Value) -> Result<Value> {
+-    let response = client
+-        .post(origin.join("oauth/tokens")?)
+-        .json(&payload)
+-        .send()
++    let mut response = client
++        .post(origin.join("oauth/tokens")?.as_str())
++        .send_json(&payload)
+         .context("OAuth token request failed; retry login if token delivery is uncertain")?;
+     if !response.status().is_success() {
+         bail!(
+@@ -292,7 +290,7 @@ fn token_request(client: &Client, origin: &Url, payload: Value) -> Result<Value>
+             response.status()
+         );
+     }
+-    let value: Value = response.json().context("Invalid OAuth token response")?;
++    let value: Value = serde_json::from_reader(response.body_mut().as_reader()).context("Invalid OAuth token response")?;
+     Ok(value)
+ }
+ 
+diff --git a/src/oauth/tests.rs b/src/oauth/tests.rs
+index a11757d..9370c84 100644
+--- a/src/oauth/tests.rs
++++ b/src/oauth/tests.rs
+@@ -51,12 +51,8 @@ fn authorization_code_roundtrip_checks_pkce_and_saves_private_tokens() {
+                 .append_pair("state", &params["state"])
+                 .append_pair("code", "test-code");
+             *worker.lock().unwrap() = Some(thread::spawn(move || {
+-                let client = Client::builder()
+-                    .no_proxy()
+-                    .timeout(Duration::from_secs(5))
+-                    .build()
+-                    .unwrap();
+-                assert!(client.get(callback).send().unwrap().status().is_success());
++                let client = Client::config_builder().proxy(None).timeout_global(Some(Duration::from_secs(5))).build().new_agent();
++                assert!(client.get(callback.as_str()).call().unwrap().status().is_success());
+             }));
+             Ok(())
+         },
