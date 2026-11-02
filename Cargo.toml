@@ -14,7 +14,7 @@ include = ["src/**", "build.rs", "Cargo.toml", "Cargo.lock", "README.md", "LICEN
 [dependencies]
 base64 = "0.22"
 getrandom = "0.3"
-sha2 = "0.10"
+sha2 = "0.11"
 anyhow = "1"
 clap = { version = "4", features = ["derive", "env"] }
 comfy-table = { version = "7", default-features = false }
