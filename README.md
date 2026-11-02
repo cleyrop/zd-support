@@ -5,7 +5,30 @@ CLI Rust pour l’API Requests de Zendesk. Portail par défaut :
 
 ## Installation
 
-Rust 1.90+. Un navigateur est nécessaire uniquement pour le mode OAuth facultatif.
+Les [releases GitHub](https://github.com/cleyrop/zd-support/releases) contiennent
+les binaires macOS Apple Silicon/Intel et Linux ARM64/x86_64. Les binaires macOS
+sont signés Developer ID et notarisés ; chaque archive est attestée par GitHub.
+Linux est compilé sur Ubuntu 24.04 (glibc 2.39) ; utiliser une distribution compatible.
+Windows n’est pas distribué ni validé pour cette première release.
+
+Exemple pour macOS Apple Silicon, avec GitHub CLI installé :
+
+```sh
+gh release download v0.3.5 --repo cleyrop/zd-support \
+  --pattern 'zd-support-v0.3.5-aarch64-apple-darwin.zip' --pattern SHA256SUMS
+gh attestation verify zd-support-v0.3.5-aarch64-apple-darwin.zip --repo cleyrop/zd-support
+unzip zd-support-v0.3.5-aarch64-apple-darwin.zip
+mkdir -p "$HOME/.local/bin"
+install -m 755 zd-support-v0.3.5-aarch64-apple-darwin/zd-support "$HOME/.local/bin/zd-support"
+```
+
+Ajouter `~/.local/bin` au `PATH` si nécessaire. Pour Intel, remplacer `aarch64`
+par `x86_64`. Pour Linux, choisir l’archive `*-unknown-linux-gnu.tar.gz` puis
+utiliser `tar -xzf ARCHIVE`. Les archives incluent les licences des dépendances
+et les sources correspondantes des dépendances MPL.
+
+Pour compiler depuis les sources : Rust 1.90.0, épinglé dans `rust-toolchain.toml`.
+Un navigateur est nécessaire uniquement pour le mode OAuth facultatif.
 
 ```sh
 cargo install --locked --path .
@@ -194,6 +217,9 @@ le refus de résolution sans permission, les réponses API incohérentes,
 les erreurs HTTP non JSON, les messages trop longs et les fichiers liés/trop permissifs.
 Aucun ticket réel n’est créé par les tests. La connexion par mot de passe et
 la lecture des conversations ont également été vérifiées sur OUTSCALE.
+
+Les workflows GitHub exécutent les tests sur les quatre plateformes distribuées.
+La procédure de publication est décrite dans [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Références
 
