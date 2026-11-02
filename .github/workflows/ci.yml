@@ -56,3 +56,5 @@ jobs:
           persist-credentials: false
       - name: Validate workflow syntax and expressions
         run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -shellcheck=
+      - name: Release tooling regression tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
