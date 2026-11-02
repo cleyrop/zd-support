@@ -12,7 +12,7 @@ publish = false
 include = ["src/**", "build.rs", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [dependencies]
-base64 = "0.22"
+base64 = "0.23"
 getrandom = "0.3"
 sha2 = "0.10"
 anyhow = "1"
