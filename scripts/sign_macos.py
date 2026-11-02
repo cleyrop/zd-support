@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -22,7 +23,13 @@ def run(args, *, allow_failure=False):
     result = subprocess.run(args, text=True, capture_output=True)
     if result.returncode and not allow_failure:
         # Arguments may contain credential identifiers; never print the command.
-        raise RuntimeError(f"{Path(args[0]).name} failed (exit {result.returncode})")
+        detail = ""
+        if args[0] == "codesign":
+            # Only report known diagnostics, never arbitrary command output.
+            for diagnostic in ("errSecInternalComponent", "unable to build chain", "User interaction is not allowed", "The specified item could not be found"):
+                if diagnostic in result.stderr:
+                    detail += f"; {diagnostic}"
+        raise RuntimeError(f"{Path(args[0]).name} failed (exit {result.returncode}){detail}")
     return result
 
 
@@ -42,11 +49,17 @@ def sign(target):
         root = Path(temp)
         keychain = root / "signing.keychain-db"
         p12, p8 = root / "certificate.p12", root / "notary.p8"
+        original_search = shlex.split(run(["security", "list-keychains", "-d", "user"]).stdout)
+        original_default = shlex.split(run(["security", "default-keychain", "-d", "user"]).stdout)
         try:
             password = secrets.token_urlsafe(32)
             run(["security", "create-keychain", "-p", password, str(keychain)])
             run(["security", "set-keychain-settings", "-lut", "3600", str(keychain)])
             run(["security", "unlock-keychain", "-p", password, str(keychain)])
+            # codesign's certificate-chain lookup also uses the user search list,
+            # even when its signing identity is selected with --keychain.
+            run(["security", "list-keychains", "-d", "user", "-s", str(keychain), *original_search])
+            run(["security", "default-keychain", "-d", "user", "-s", str(keychain)])
             p12.write_bytes(decode(os.environ[REQUIRED[0]]))
             run(["security", "import", str(p12), "-k", str(keychain), "-P", os.environ[REQUIRED[1]], "-T", "/usr/bin/codesign", "-f", "pkcs12"])
             p12.unlink()
@@ -73,8 +86,20 @@ def sign(target):
         finally:
             p12.unlink(missing_ok=True)
             p8.unlink(missing_ok=True)
-            if keychain.exists():
-                run(["security", "delete-keychain", str(keychain)])
+            # Attempt every cleanup step even if restoring one setting fails.
+            cleanup_errors = []
+            for args in (
+                ["security", "default-keychain", "-d", "user", "-s", *original_default],
+                ["security", "list-keychains", "-d", "user", "-s", *original_search],
+                ["security", "delete-keychain", str(keychain)],
+            ):
+                if args[1] == "delete-keychain" and not keychain.exists():
+                    continue
+                result = run(args, allow_failure=True)
+                if result.returncode:
+                    cleanup_errors.append(args[1])
+            if cleanup_errors:
+                raise RuntimeError("Keychain cleanup failed: " + ", ".join(cleanup_errors))
 
 
 if __name__ == "__main__":

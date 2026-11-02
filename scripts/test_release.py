@@ -2,12 +2,14 @@ import hashlib
 import os
 from pathlib import Path
 import tempfile
+import subprocess
 import unittest
 import zipfile
 from unittest.mock import patch
 
 import release
 from sign_macos import decode
+import sign_macos
 
 
 class ReleaseTests(unittest.TestCase):
@@ -59,6 +61,37 @@ class ReleaseTests(unittest.TestCase):
         self.assertEqual(decode(" ZmFr\nZSBvbmx5\n"), b"fake only")
         with self.assertRaises(ValueError):
             decode("invalid!!")
+
+    def test_signing_failure_restores_keychains_and_removes_credentials(self):
+        for restoration_fails in (False, True):
+            with self.subTest(restoration_fails=restoration_fails), tempfile.TemporaryDirectory() as tmp:
+                calls = []
+                def command(args, **kwargs):
+                    calls.append(args)
+                    stdout, stderr, code = "", "", 0
+                    if args[:2] == ["security", "list-keychains"] and "-s" not in args:
+                        stdout = '"/original/login.keychain-db" " /original/with space.keychain-db"'
+                    elif args[:2] == ["security", "default-keychain"] and "-s" not in args:
+                        stdout = '"/original/login.keychain-db"'
+                    elif args[:2] == ["security", "create-keychain"]:
+                        Path(args[-1]).touch()
+                    elif args[:2] == ["security", "find-identity"]:
+                        stdout = '1) ' + 'A' * 40 + ' "Developer ID Application: Test"'
+                    elif args[0] == "codesign":
+                        code, stderr = 1, "errSecInternalComponent"
+                    elif restoration_fails and args[:2] == ["security", "default-keychain"] and args[-1] == "/original/login.keychain-db":
+                        code = 1
+                    return subprocess.CompletedProcess(args, code, stdout, stderr)
+
+                env = {key: "ZmFrZQ==" for key in sign_macos.REQUIRED}
+                env.update(GITHUB_ACTIONS="true", GITHUB_REPOSITORY="cleyrop/zd-support", RUNNER_TEMP=tmp)
+                with patch.dict(os.environ, env), patch.object(sign_macos.subprocess, "run", side_effect=command), patch.object(Path, "chmod"):
+                    with self.assertRaises(RuntimeError):
+                        sign_macos.sign("aarch64-apple-darwin")
+                self.assertIn(["security", "default-keychain", "-d", "user", "-s", "/original/login.keychain-db"], calls)
+                self.assertIn(["security", "list-keychains", "-d", "user", "-s", "/original/login.keychain-db", " /original/with space.keychain-db"], calls)
+                self.assertEqual(calls[-1][1], "delete-keychain")
+                self.assertEqual(list(Path(tmp).iterdir()), [])
 
 
 if __name__ == "__main__":
