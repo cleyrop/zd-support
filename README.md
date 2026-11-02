@@ -14,12 +14,12 @@ Windows n’est pas distribué ni validé pour cette première release.
 Exemple pour macOS Apple Silicon, avec GitHub CLI installé :
 
 ```sh
-gh release download v0.3.5 --repo cleyrop/zd-support \
-  --pattern 'zd-support-v0.3.5-aarch64-apple-darwin.zip' --pattern SHA256SUMS
-gh attestation verify zd-support-v0.3.5-aarch64-apple-darwin.zip --repo cleyrop/zd-support
-unzip zd-support-v0.3.5-aarch64-apple-darwin.zip
+gh release download v0.3.6 --repo cleyrop/zd-support \
+  --pattern 'zd-support-v0.3.6-aarch64-apple-darwin.zip' --pattern SHA256SUMS
+gh attestation verify zd-support-v0.3.6-aarch64-apple-darwin.zip --repo cleyrop/zd-support
+unzip zd-support-v0.3.6-aarch64-apple-darwin.zip
 mkdir -p "$HOME/.local/bin"
-install -m 755 zd-support-v0.3.5-aarch64-apple-darwin/zd-support "$HOME/.local/bin/zd-support"
+install -m 755 zd-support-v0.3.6-aarch64-apple-darwin/zd-support "$HOME/.local/bin/zd-support"
 ```
 
 Ajouter `~/.local/bin` au `PATH` si nécessaire. Pour Intel, remplacer `aarch64`

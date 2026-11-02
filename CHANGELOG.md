@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.5 — 2026-11-02
+## 0.3.6 — 2026-11-02
 
 Première version publique ; les versions précédentes correspondaient au développement local.
 
@@ -9,3 +9,8 @@ Première version publique ; les versions précédentes correspondaient au déve
 - Création, réponse, résolution lorsque permise et surveillance des demandes.
 - Sessions privées, écritures sans nouvelle tentative automatique, validation des réponses API.
 - CI pour Linux et macOS, archives signées/notarisées sur macOS et provenance GitHub.
+
+## 0.3.5 — tentative non publiée
+
+La signature Apple a bloqué la publication. La version 0.3.6 corrige la découverte
+du trousseau de signature et vérifie son nettoyage en cas d’échec.

@@ -1702,7 +1702,7 @@ dependencies = [
 
 [[package]]
 name = "zd-support"
-version = "0.3.5"
+version = "0.3.6"
 dependencies = [
  "anyhow",
  "base64 0.22.1",

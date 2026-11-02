@@ -1,4 +1,4 @@
-Première release publique de **zd-support**, version 0.3.5.
+Première release publique de **zd-support**, version 0.3.6.
 
 - Authentification par compte support Zendesk ou OAuth PKCE.
 - Création, consultation, réponse et résolution des demandes autorisées.
