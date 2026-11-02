@@ -17,7 +17,7 @@ getrandom = "0.3"
 sha2 = "0.10"
 anyhow = "1"
 clap = { version = "4", features = ["derive", "env"] }
-comfy-table = { version = "7", default-features = false }
+comfy-table = { version = "8", default-features = false }
 terminal_size = "0.4"
 unicode-width = "0.2"
 directories = "6"
