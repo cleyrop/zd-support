@@ -124,6 +124,33 @@ Le JSON donne les octets, SHA-256 et la taille gzip déterministe du binaire seu
 Le comptage des paquets inclut dépendances normales et de compilation, hors tests,
 après filtrage de plateforme par `cargo metadata --filter-platform aarch64-apple-darwin`.
 
+### Où restent les 2,47 Mo ?
+
+L’inspection des sections Mach-O du binaire retenu donne :
+
+| Contenu | Octets | Part |
+| --- | ---: | ---: |
+| Code machine | 1 450 500 | 58,72 % |
+| Constantes embarquées | 624 272 | 25,27 % |
+| Tables d’exceptions et de déroulage de pile | 270 684 | 10,96 % |
+| Chaînes de caractères | 36 886 | 1,49 % |
+| Autres métadonnées, alignement et signature locale | 87 674 | 3,55 % |
+
+Une compilation de diagnostic avec symboles conservés permet à `cargo-bloat 0.12.1`
+d’attribuer approximativement le code : bibliothèque standard Rust 377 ko,
+TLS/cryptographie (Rustls, Ring, WebPKI) 331 ko, HTTP et moteur d’exécution
+(Reqwest, Hyper, Hyper-util, HTTP, Tokio, Bytes) 249 ko, Clap 102 ko,
+code de zd-support 95 ko, ZIP 57 ko. Ces valeurs ne comprennent pas les données
+constantes et ne sont pas des coûts indépendants : LTO partage et intègre des fonctions.
+La section de code de ce build de diagnostic diffère de 852 octets de celle du build distribué.
+Les symboles ne sont pas conservés dans les releases.
+
+Les constantes comprennent notamment les données Unicode, les certificats racines,
+les tables cryptographiques et les descriptions de structures ; leur attribution
+exacte par bibliothèque n’est pas fournie par cargo-bloat. Les 156 paquets du graphe
+incluent aussi les outils de compilation et macros, qui ne sont pas tous embarqués.
+Le détail mesuré est dans `benchmarks/code-size.json`.
+
 ## Connexion avec ton compte support
 
 ```sh

@@ -1,0 +1,98 @@
+{
+  "tool": "cargo-bloat 0.12.1",
+  "target": "aarch64-apple-darwin",
+  "rust": "1.90.0",
+  "profile": "z, fat LTO, codegen-units=1; symbols retained only for attribution",
+  "notes": "Approximate code attribution after LTO. Data sections are excluded. The diagnostic binary is not distributed. Its code section differs by 852 bytes from the stripped release build.",
+  "stripped_file_bytes": 2470016,
+  "stripped_sections": {
+    "machine_code": 1450500,
+    "constants": 624272,
+    "strings": 36886,
+    "exception_and_unwind_tables": 270684,
+    "other": 87674
+  },
+  "diagnostic_code_bytes": 1449648,
+  "code_by_crate": [
+    {
+      "name": "std",
+      "size": 377476
+    },
+    {
+      "name": "rustls",
+      "size": 211924
+    },
+    {
+      "name": "reqwest",
+      "size": 137744
+    },
+    {
+      "name": "clap_builder",
+      "size": 102072
+    },
+    {
+      "name": "zd_support",
+      "size": 95176
+    },
+    {
+      "name": "[Unknown]",
+      "size": 92492
+    },
+    {
+      "name": "ring",
+      "size": 89704
+    },
+    {
+      "name": "zip",
+      "size": 57232
+    },
+    {
+      "name": "hyper_util",
+      "size": 33404
+    },
+    {
+      "name": "serde_json",
+      "size": 32632
+    },
+    {
+      "name": "http",
+      "size": 29540
+    },
+    {
+      "name": "webpki",
+      "size": 29452
+    },
+    {
+      "name": "tokio",
+      "size": 28624
+    },
+    {
+      "name": "url",
+      "size": 23116
+    },
+    {
+      "name": "comfy_table",
+      "size": 16276
+    },
+    {
+      "name": "idna",
+      "size": 15820
+    },
+    {
+      "name": "anyhow",
+      "size": 13976
+    },
+    {
+      "name": "hyper",
+      "size": 13668
+    },
+    {
+      "name": "miniz_oxide",
+      "size": 7812
+    },
+    {
+      "name": "bytes",
+      "size": 5724
+    }
+  ]
+}
