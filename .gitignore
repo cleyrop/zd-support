@@ -1,0 +1,13 @@
+/target/
+/dist/
+/PRODUCTION_REVIEW.txt
+.DS_Store
+__pycache__/
+*.pyc
+.env
+.env.*
+session.json
+session.lock
+*.p12
+*.p8
+*.keychain-db
